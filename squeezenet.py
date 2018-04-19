@@ -4,6 +4,12 @@ import numpy as np
 import tensorflow as tf
 from keras.datasets import cifar10
 
+def float_quant(x): 
+    t = tf.fill(tf.shape(x), 21)
+    t1 = tf.cast(t, tf.int32)
+    x_q = tf.bitcast(tf.bitwise.left_shift(tf.bitwise.right_shift(tf.bitcast(x, tf.int32), t), t), tf.float32)
+    return x + tf.stop_gradient(x_q - x)
+
 # define squeeze module
 def squeeze(input, channels, layer_num):
     """
@@ -18,8 +24,8 @@ def squeeze(input, channels, layer_num):
     input_channels = input.get_shape().as_list()[3]
 
     with tf.name_scope(layer_name):
-        weights = tf.Variable(tf.contrib.layers.xavier_initializer()([1, 1, input_channels, channels]))
-        biases = tf.Variable(tf.zeros([1, 1, 1, channels]), name='biases')
+        weights = float_quant(tf.Variable(tf.contrib.layers.xavier_initializer()([1, 1, input_channels, channels])))
+        biases = float_quant(tf.Variable(tf.zeros([1, 1, 1, channels]), name='biases'))
         onebyone = tf.nn.conv2d(input, weights, strides=(1, 1, 1, 1), padding='VALID') + biases
         A = tf.nn.relu(onebyone)
 
@@ -45,8 +51,8 @@ def expand(input, channels_1by1, channels_3by3, layer_num):
     input_channels = input.get_shape().as_list()[3]
 
     with tf.name_scope(layer_name):
-        weights1x1 = tf.Variable(tf.contrib.layers.xavier_initializer()([1, 1, input_channels, channels_1by1]))
-        biases1x1 = tf.Variable(tf.zeros([1, 1, 1, channels_1by1]), name='biases')
+        weights1x1 = float_quant(tf.Variable(tf.contrib.layers.xavier_initializer()([1, 1, input_channels, channels_1by1])))
+        biases1x1 = float_quant(tf.Variable(tf.zeros([1, 1, 1, channels_1by1]), name='biases'))
         onebyone = tf.nn.conv2d(input, weights1x1, strides=(1, 1, 1, 1), padding='VALID') + biases1x1
         A_1x1 = tf.nn.relu(onebyone)
 
@@ -55,8 +61,8 @@ def expand(input, channels_1by1, channels_3by3, layer_num):
         tf.summary.histogram('logits_1x1', onebyone)
         tf.summary.histogram('activations_1x1', A_1x1)
 
-        weights3x3 = tf.Variable(tf.contrib.layers.xavier_initializer()([1, 1, input_channels, channels_3by3]))
-        biases3x3 = tf.Variable(tf.zeros([1, 1, 1, channels_3by3]), name='biases')
+        weights3x3 = float_quant(tf.Variable(tf.contrib.layers.xavier_initializer()([1, 1, input_channels, channels_3by3])))
+        biases3x3 = float_quant(tf.Variable(tf.zeros([1, 1, 1, channels_3by3]), name='biases'))
         threebythree = tf.nn.conv2d(input, weights3x3, strides=(1, 1, 1, 1), padding='SAME') + biases3x3
         A_3x3 = tf.nn.relu(threebythree)
 
@@ -107,8 +113,8 @@ def model(input_height, input_width, input_channels, output_classes, pooling_siz
     # define structure of the net
     # layer 1 - conv 1
         with tf.name_scope('conv_1'):
-            W_conv1 = tf.Variable(tf.contrib.layers.xavier_initializer()([7, 7, 3, 96]))
-            b_conv1 = tf.Variable(tf.zeros([1, 1, 1, 96]))
+            W_conv1 = float_quant(tf.Variable(tf.contrib.layers.xavier_initializer()([10, 10, 3, 96])))
+            b_conv1 = float_quant(tf.Variable(tf.zeros([1, 1, 1, 96])))
             X_1 = tf.nn.conv2d(input_image, W_conv1, strides=(1, 2, 2, 1), padding='VALID') + b_conv1
             A_1 = tf.nn.relu(X_1)
             tf.summary.histogram('conv1 weights', W_conv1)
@@ -145,8 +151,8 @@ def model(input_height, input_width, input_channels, output_classes, pooling_siz
 
         # layer 13 - final
         with tf.name_scope('final'):
-            W_conv10 = tf.Variable(tf.contrib.layers.xavier_initializer()([1, 1, 512, output_classes]))
-            b_conv10 = tf.Variable(tf.zeros([1, 1, 1, output_classes]))
+            W_conv10 = float_quant(tf.Variable(tf.contrib.layers.xavier_initializer()([1, 1, 512, output_classes])))
+            b_conv10 = float_quant(tf.Variable(tf.zeros([1, 1, 1, output_classes])))
             conv_10 = tf.nn.conv2d(dropout_9, W_conv10, strides=(1, 1, 1,1), padding='VALID') + b_conv10
             A_conv_10 = tf.nn.relu(conv_10)
 
