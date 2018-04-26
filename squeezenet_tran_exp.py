@@ -128,7 +128,13 @@ def model(input_height, input_width, input_channels, output_classes, pooling_siz
                                      name='input_image')
         labels = tf.placeholder(tf.int32, shape=[None, 1])
         in_training = tf.placeholder(tf.bool, shape=())
-        learning_rate = tf.placeholder(tf.float32, shape=())
+        batch = tf.Variable(0, dtype=data_type())   
+        learning_rate = tf.train.exponential_decay(
+              0.01,                # Base learning rate.
+              batch * 128,  # Current index into the dataset.
+              10000,          # Decay step.
+              0.95,                # Decay rate.
+        staircase=True)
 
         tf.summary.image('input image', input_image)
     # define structure of the net
@@ -204,7 +210,7 @@ def model(input_height, input_width, input_channels, output_classes, pooling_siz
         summaries = tf.summary.merge_all()
         test_accuracy_summary = tf.summary.scalar('test_accuracy', accuracy)
 
-    return (graph, input_image, labels, in_training, learning_rate,
+    return (graph, input_image, labels, in_training, batch,
             loss, accuracy, summaries, test_accuracy_summary, optimizer)
 
 
@@ -251,7 +257,7 @@ def run(iterations, minibatch_size):
     x_test, _, _ = prepare_input(x_test, mu_train, sigma_train)
     train_samples = x_train.shape[0]
 
-    (graph, input_batch, labels, in_training, learning_rate,
+    (graph, input_batch, labels, in_training, batch,
      loss, accuracy, summaries, test_accuracy_summary, optimizer) = \
         model(input_height, input_width, input_channels, output_classes, (1, 3, 3, 1))
 
@@ -273,7 +279,7 @@ def run(iterations, minibatch_size):
                 input_batch: mb_data,
                 labels: mb_labels,
                 in_training: True,
-                learning_rate: 0.0004
+                batch: i
             }
 
             collectibles = [loss, accuracy, summaries, optimizer]
@@ -287,7 +293,7 @@ def run(iterations, minibatch_size):
                     input_batch: x_test,
                     labels: y_test,
                     in_training: False,
-                    learning_rate: 0.0004
+                    batch: i
                 }
                 test_acc, sum_acc = sess.run([accuracy, test_accuracy_summary], feed_dict=feed_dict)
                 train_writer.add_summary(sum_acc, i)
