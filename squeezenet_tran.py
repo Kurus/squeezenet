@@ -23,7 +23,7 @@ def float_quant(x):
     inp = tf.bitcast(x, tf.int32)
     inp = inp+a
     x_q = tf.bitcast(tf.bitwise.left_shift(tf.bitwise.right_shift(inp, t), t), tf.float32)
-    return x + tf.stop_gradient(x_q - x)
+    return x# + tf.stop_gradient(x_q - x)
 
 # define squeeze module
 def squeeze(input, channels, layer_num, trainable ):
