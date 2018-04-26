@@ -130,7 +130,7 @@ def model(input_height, input_width, input_channels, output_classes, pooling_siz
         in_training = tf.placeholder(tf.bool, shape=())
         batch = tf.Variable(0, dtype=tf.int32)   
         learning_rate = tf.train.exponential_decay(
-              0.01,                # Base learning rate.
+              0.001,                # Base learning rate.
               batch * 128,  # Current index into the dataset.
               10000,          # Decay step.
               0.95,                # Decay rate.
@@ -210,7 +210,7 @@ def model(input_height, input_width, input_channels, output_classes, pooling_siz
         summaries = tf.summary.merge_all()
         test_accuracy_summary = tf.summary.scalar('test_accuracy', accuracy)
 
-    return (graph, input_image, labels, in_training, batch,
+    return (graph, input_image, labels, in_training, batch,learning_rate,
             loss, accuracy, summaries, test_accuracy_summary, optimizer)
 
 
@@ -257,7 +257,7 @@ def run(iterations, minibatch_size):
     x_test, _, _ = prepare_input(x_test, mu_train, sigma_train)
     train_samples = x_train.shape[0]
 
-    (graph, input_batch, labels, in_training, batch,
+    (graph, input_batch, labels, in_training, batch,learning_rate,
      loss, accuracy, summaries, test_accuracy_summary, optimizer) = \
         model(input_height, input_width, input_channels, output_classes, (1, 3, 3, 1))
 
@@ -295,10 +295,10 @@ def run(iterations, minibatch_size):
                     in_training: False,
                     batch: i
                 }
-                test_acc, sum_acc = sess.run([accuracy, test_accuracy_summary], feed_dict=feed_dict)
+                test_acc, sum_acc,lr = sess.run([accuracy, test_accuracy_summary,learning_rate], feed_dict=feed_dict)
                 train_writer.add_summary(sum_acc, i)
-                print('Iteration: {}\t loss: {:.3f}\t accuracy: {:.3f}\t test accuracy: {:.3f}'.format(
-                    i, loss_val, accuracy_val, test_acc))
+                print('Iteration: {} \tlr {}\t loss: {:.3f}\t accuracy: {:.3f}\t test accuracy: {:.3f}'.format(
+                    i,lr, loss_val, accuracy_val, test_acc))
 
 start = dt.now()
 run(10001, 128)
