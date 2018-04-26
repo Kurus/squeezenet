@@ -139,8 +139,8 @@ def model(input_height, input_width, input_channels, output_classes, pooling_siz
             tmp1 = np.array(wei[:,:,2,:])
             wei[:,:,2,:] = tmp0
             wei[:,:,0,:] = tmp1
-            W_conv1 = float_quant(tf.Variable(wei), trainable=False)
-            b_conv1 = float_quant(tf.Variable(bia), trainable=False)
+            W_conv1 = float_quant(tf.Variable(wei, trainable=False))
+            b_conv1 = float_quant(tf.Variable(bia, trainable=False))
 
             X_1 = tf.nn.conv2d(input_image, W_conv1, strides=(1, 2, 2, 1), padding='VALID') + b_conv1
             A_1 = tf.nn.relu(X_1)
