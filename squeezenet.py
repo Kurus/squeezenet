@@ -2,7 +2,8 @@ import os
 from datetime import datetime as dt
 import numpy as np
 import tensorflow as tf
-from keras.datasets import cifar10
+from keras.datasets import cifar100
+import scipy.io
 
 def float_quant(x): 
     t = tf.fill(tf.shape(x), 21)
@@ -116,8 +117,8 @@ def model(input_height, input_width, input_channels, output_classes, pooling_siz
     # define structure of the net
     # layer 1 - conv 1
         with tf.name_scope('conv_1'):
-            W_conv1 = float_quant(tf.Variable(tf.contrib.layers.xavier_initializer()([10, 10, 3, 96])))
-            b_conv1 = float_quant(tf.Variable(tf.zeros([1, 1, 1, 96])))
+            W_conv1 = float_quant(tf.Variable(tf.contrib.layers.xavier_initializer()([3, 3, 3, 64])))
+            b_conv1 = float_quant(tf.Variable(tf.zeros([1, 1, 1, 64])))
             X_1 = tf.nn.conv2d(input_image, W_conv1, strides=(1, 2, 2, 1), padding='VALID') + b_conv1
             A_1 = tf.nn.relu(X_1)
             tf.summary.histogram('conv1 weights', W_conv1)
@@ -131,23 +132,20 @@ def model(input_height, input_width, input_channels, output_classes, pooling_siz
         # layer 3-5 - fire modules
         fire_2 = fire_module(maxpool_1, 16, 64, 64, layer_num=2)
         fire_3 = fire_module(fire_2, 16, 64, 64, layer_num=3)
-        fire_4 = fire_module(fire_3, 32, 128, 128, layer_num=4)
 
-        # layer 6 - maxpool
-        maxpool_4 = tf.nn.max_pool(fire_4, ksize=pooling_size, strides=(1, 2, 2, 1), padding='VALID', name='maxpool_4')
+        maxpool_4 = tf.nn.max_pool(fire_3, ksize=pooling_size, strides=(1, 2, 2, 1), padding='VALID', name='maxpool_4')
+        fire_4 = fire_module(maxpool_4, 32, 128, 128, layer_num=4)
+        fire_5 = fire_module(fire_4, 32, 128, 128, layer_num=5)
+
+        maxpool_8 = tf.nn.max_pool(fire_5, ksize=pooling_size, strides=(1, 2, 2, 1), padding='VALID', name='maxpool_8')
 
         # layer 7-10 - fire modules
-        fire_5 = fire_module(maxpool_4, 32, 128, 128, layer_num=5)
-        fire_6 = fire_module(fire_5, 48, 192, 192, layer_num=6)
+        fire_6 = fire_module(maxpool_8, 48, 192, 192, layer_num=6)
         fire_7 = fire_module(fire_6, 48, 192, 192, layer_num=7)
         fire_8 = fire_module(fire_7, 64, 256, 256, layer_num=8)
+        fire_9 = fire_module(fire_8, 64, 256, 256, layer_num=9)
 
-        # layer 11 - maxpool
-        maxpool_8 = tf.nn.max_pool(fire_8, ksize=pooling_size, strides=(1, 2, 2, 1), padding='VALID', name='maxpool_8')
-
-        # layer 12 - fire 9 + dropout
-        fire_9 = fire_module(maxpool_8, 64, 256, 256, layer_num=9)
-
+       
         dropout_9 = tf.cond(in_training,
                             lambda: tf.nn.dropout(fire_9, keep_prob=0.5),
                             lambda: fire_9)
@@ -223,21 +221,21 @@ def run(iterations, minibatch_size):
     # CIFAR10
     input_height = input_width = 32
     input_channels = 3
-    output_classes = 10
+    output_classes = 100
 
-    (x_train, y_train), (x_test, y_test) = cifar10.load_data()
+    (x_train, y_train), (x_test, y_test) = cifar100.load_data()
     x_train, mu_train, sigma_train = prepare_input(x_train)
     x_test, _, _ = prepare_input(x_test, mu_train, sigma_train)
     train_samples = x_train.shape[0]
 
     (graph, input_batch, labels, in_training, learning_rate,
      loss, accuracy, summaries, test_accuracy_summary, optimizer) = \
-        model(input_height, input_width, input_channels, output_classes, (1, 2, 2, 1))
+        model(input_height, input_width, input_channels, output_classes, (1, 3, 3, 1))
 
-    with tf.Session(graph=graph) as sess:
+    with tf.Session(graph=graph,config=tf.ConfigProto(intra_op_parallelism_threads=16)) as sess:
         sess.run(tf.global_variables_initializer())
 
-        experiment_dir = next_experiment_dir('/tmp/squeezenet')
+        experiment_dir = next_experiment_dir('./tmp/squeezenet')
         print("Creating output dir:", experiment_dir)
         train_writer = tf.summary.FileWriter(experiment_dir, sess.graph)
 
