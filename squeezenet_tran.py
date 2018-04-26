@@ -19,7 +19,10 @@ weights_raw = scipy.io.loadmat('sqz_full.mat')
 def float_quant(x): 
     t = tf.fill(tf.shape(x), 21)
     t1 = tf.cast(t, tf.int32)
-    x_q = tf.bitcast(tf.bitwise.left_shift(tf.bitwise.right_shift(tf.bitcast(x, tf.int32), t), t), tf.float32)
+    a = tf.fill(tf.shape(x), 0x100000)
+    inp = tf.bitcast(x, tf.int32)
+    inp = inp+a
+    x_q = tf.bitcast(tf.bitwise.left_shift(tf.bitwise.right_shift(inp, t), t), tf.float32)
     return x + tf.stop_gradient(x_q - x)
 
 # define squeeze module
@@ -38,7 +41,7 @@ def squeeze(input, channels, layer_num):
     input_channels = input.get_shape().as_list()[3]
 
     with tf.name_scope(layer_name):
-        weights = float_quant(tf.Variable(wei,name='weight'))
+        weights = float_quant(tf.Variable(wei,name='weight', trainable=False))
         biases = float_quant(tf.Variable(bia, name='biases'))
         onebyone = tf.nn.conv2d(input, weights, strides=(1, 1, 1, 1), padding='VALID') + biases
         A = tf.nn.relu(onebyone)
@@ -69,8 +72,8 @@ def expand(input, channels_1by1, channels_3by3, layer_num):
     wei3,bia3=weights_raw[nm][0]
 
     with tf.name_scope(layer_name):
-        weights1x1 = float_quant(tf.Variable(wei,name= 'weight'))
-        biases1x1 = float_quant(tf.Variable(bia, name='biases'))
+        weights1x1 = float_quant(tf.Variable(wei,name= 'weight', trainable=False))
+        biases1x1 = float_quant(tf.Variable(bia, name='biases', trainable=False))
         onebyone = tf.nn.conv2d(input, weights1x1, strides=(1, 1, 1, 1), padding='VALID') + biases1x1
         A_1x1 = tf.nn.relu(onebyone)
 
@@ -79,8 +82,8 @@ def expand(input, channels_1by1, channels_3by3, layer_num):
         tf.summary.histogram('logits_1x1', onebyone)
         tf.summary.histogram('activations_1x1', A_1x1)
 
-        weights3x3 = float_quant(tf.Variable(wei3, name='weight'))
-        biases3x3 = float_quant(tf.Variable(bia3, name='biases'))
+        weights3x3 = float_quant(tf.Variable(wei3, name='weight', trainable=False))
+        biases3x3 = float_quant(tf.Variable(bia3, name='biases', trainable=False))
         threebythree = tf.nn.conv2d(input, weights3x3, strides=(1, 1, 1, 1), padding='SAME') + biases3x3
         A_3x3 = tf.nn.relu(threebythree)
 
@@ -136,8 +139,8 @@ def model(input_height, input_width, input_channels, output_classes, pooling_siz
             tmp1 = np.array(wei[:,:,2,:])
             wei[:,:,2,:] = tmp0
             wei[:,:,0,:] = tmp1
-            W_conv1 = float_quant(tf.Variable(wei))
-            b_conv1 = float_quant(tf.Variable(bia))
+            W_conv1 = float_quant(tf.Variable(wei), trainable=False)
+            b_conv1 = float_quant(tf.Variable(bia), trainable=False)
 
             X_1 = tf.nn.conv2d(input_image, W_conv1, strides=(1, 2, 2, 1), padding='VALID') + b_conv1
             A_1 = tf.nn.relu(X_1)

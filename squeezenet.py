@@ -7,7 +7,10 @@ from keras.datasets import cifar10
 def float_quant(x): 
     t = tf.fill(tf.shape(x), 21)
     t1 = tf.cast(t, tf.int32)
-    x_q = tf.bitcast(tf.bitwise.left_shift(tf.bitwise.right_shift(tf.bitcast(x, tf.int32), t), t), tf.float32)
+    a = tf.fill(tf.shape(x), 0x100000)
+    inp = tf.bitcast(x, tf.int32)
+    inp = inp+a
+    x_q = tf.bitcast(tf.bitwise.left_shift(tf.bitwise.right_shift(inp, t), t), tf.float32)
     return x + tf.stop_gradient(x_q - x)
 
 # define squeeze module
