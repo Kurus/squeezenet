@@ -26,7 +26,7 @@ def float_quant(x):
     return x + tf.stop_gradient(x_q - x)
 
 # define squeeze module
-def squeeze(input, channels, layer_num):
+def squeeze(input, channels, layer_num, trainable ):
     """
     Defines squeezed block for fire module.
 
@@ -41,7 +41,7 @@ def squeeze(input, channels, layer_num):
     input_channels = input.get_shape().as_list()[3]
 
     with tf.name_scope(layer_name):
-        weights = float_quant(tf.Variable(wei,name='weight', trainable=False))
+        weights = float_quant(tf.Variable(wei,name='weight', trainable=trainable))
         biases = float_quant(tf.Variable(bia, name='biases'))
         onebyone = tf.nn.conv2d(input, weights, strides=(1, 1, 1, 1), padding='VALID') + biases
         A = tf.nn.relu(onebyone)
@@ -54,7 +54,7 @@ def squeeze(input, channels, layer_num):
     return A
 
 # define expand module
-def expand(input, channels_1by1, channels_3by3, layer_num):
+def expand(input, channels_1by1, channels_3by3, layer_num, trainable):
     """
     Defines expand block for fire module.
     :param input: input tensor
@@ -72,8 +72,8 @@ def expand(input, channels_1by1, channels_3by3, layer_num):
     wei3,bia3=weights_raw[nm][0]
 
     with tf.name_scope(layer_name):
-        weights1x1 = float_quant(tf.Variable(wei,name= 'weight', trainable=False))
-        biases1x1 = float_quant(tf.Variable(bia, name='biases', trainable=False))
+        weights1x1 = float_quant(tf.Variable(wei,name= 'weight', trainable=trainable))
+        biases1x1 = float_quant(tf.Variable(bia, name='biases', trainable=trainable))
         onebyone = tf.nn.conv2d(input, weights1x1, strides=(1, 1, 1, 1), padding='VALID') + biases1x1
         A_1x1 = tf.nn.relu(onebyone)
 
@@ -82,8 +82,8 @@ def expand(input, channels_1by1, channels_3by3, layer_num):
         tf.summary.histogram('logits_1x1', onebyone)
         tf.summary.histogram('activations_1x1', A_1x1)
 
-        weights3x3 = float_quant(tf.Variable(wei3, name='weight', trainable=False))
-        biases3x3 = float_quant(tf.Variable(bia3, name='biases', trainable=False))
+        weights3x3 = float_quant(tf.Variable(wei3, name='weight', trainable=trainable))
+        biases3x3 = float_quant(tf.Variable(bia3, name='biases', trainable=trainable))
         threebythree = tf.nn.conv2d(input, weights3x3, strides=(1, 1, 1, 1), padding='SAME') + biases3x3
         A_3x3 = tf.nn.relu(threebythree)
 
@@ -96,7 +96,7 @@ def expand(input, channels_1by1, channels_3by3, layer_num):
 
 
 # define fire module
-def fire_module(input, squeeze_channels, expand_channels_1by1, expand_channels_3by3, layer_num):
+def fire_module(input, squeeze_channels, expand_channels_1by1, expand_channels_3by3, layer_num, trainable=True):
     """
     Train fire module. Fire module does not change input height and width, only depth.
     :param input: input tensor
@@ -107,8 +107,8 @@ def fire_module(input, squeeze_channels, expand_channels_1by1, expand_channels_3
     :return: a tensor of shape [input_height x input_width x expand_channels_1by1 * expand_channels_3by3]
     """
     with tf.name_scope('fire_' + str(layer_num)):
-        squeeze_output = squeeze(input, squeeze_channels, layer_num)
-        return expand(squeeze_output, expand_channels_1by1, expand_channels_3by3, layer_num)
+        squeeze_output = squeeze(input, squeeze_channels, layer_num, trainable)
+        return expand(squeeze_output, expand_channels_1by1, expand_channels_3by3, layer_num, trainable)
 
 
 def model(input_height, input_width, input_channels, output_classes, pooling_size=(1, 3, 3, 1)):
@@ -153,12 +153,12 @@ def model(input_height, input_width, input_channels, output_classes, pooling_siz
         maxpool_1 = tf.nn.max_pool(A_1, ksize=pooling_size, strides=(1, 2, 2, 1), padding='VALID', name='maxpool_1')
 
         # layer 3-5 - fire modules
-        fire_2 = fire_module(maxpool_1, 16, 64, 64, layer_num=2)
-        fire_3 = fire_module(fire_2, 16, 64, 64, layer_num=3)
+        fire_2 = fire_module(maxpool_1, 16, 64, 64, layer_num=2, trainable=False)
+        fire_3 = fire_module(fire_2, 16, 64, 64, layer_num=3, trainable=False)
 
         maxpool_4 = tf.nn.max_pool(fire_3, ksize=pooling_size, strides=(1, 2, 2, 1), padding='VALID', name='maxpool_4')
-        fire_4 = fire_module(maxpool_4, 32, 128, 128, layer_num=4)
-        fire_5 = fire_module(fire_4, 32, 128, 128, layer_num=5)
+        fire_4 = fire_module(maxpool_4, 32, 128, 128, layer_num=4, trainable=False)
+        fire_5 = fire_module(fire_4, 32, 128, 128, layer_num=5, trainable=False)
 
         maxpool_8 = tf.nn.max_pool(fire_5, ksize=pooling_size, strides=(1, 2, 2, 1), padding='VALID', name='maxpool_8')
 
