@@ -255,7 +255,7 @@ def run(iterations, minibatch_size):
      loss, accuracy, summaries, test_accuracy_summary, optimizer) = \
         model(input_height, input_width, input_channels, output_classes, (1, 3, 3, 1))
 
-    with tf.Session(graph=graph,config=tf.ConfigProto(intra_op_parallelism_threads=3)) as sess:
+    with tf.Session(graph=graph,config=tf.ConfigProto(intra_op_parallelism_threads=16)) as sess:
         sess.run(tf.global_variables_initializer())
 
         experiment_dir = next_experiment_dir('./tmp/squeezenet')
