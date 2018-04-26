@@ -262,10 +262,11 @@ def run(iterations, minibatch_size):
         print("Creating output dir:", experiment_dir)
         train_writer = tf.summary.FileWriter(experiment_dir, sess.graph)
 
-        lr = 0.001
+        lr = 0.004
         for i in range(iterations):
             # pick random minibatch
-            if(i%20 == 0)lr=lr/2
+            if(i%2000 == 0):
+                lr=lr/10
             mb_start = np.random.randint(0, train_samples - minibatch_size)
             mb_end = mb_start + minibatch_size
             mb_data = x_train[mb_start:mb_end, :, :, :]
@@ -296,7 +297,7 @@ def run(iterations, minibatch_size):
                     i,lr, loss_val, accuracy_val, test_acc))
 
 start = dt.now()
-run(10001, 128)
+run(10001, 256)
 print('running time:', dt.now() - start)
 
 
