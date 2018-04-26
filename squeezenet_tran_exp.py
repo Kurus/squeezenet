@@ -128,7 +128,7 @@ def model(input_height, input_width, input_channels, output_classes, pooling_siz
                                      name='input_image')
         labels = tf.placeholder(tf.int32, shape=[None, 1])
         in_training = tf.placeholder(tf.bool, shape=())
-        batch = tf.Variable(0, dtype=data_type())   
+        batch = tf.Variable(0, dtype=tf.int32)   
         learning_rate = tf.train.exponential_decay(
               0.01,                # Base learning rate.
               batch * 128,  # Current index into the dataset.
