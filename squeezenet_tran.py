@@ -273,7 +273,7 @@ def run(iterations, minibatch_size):
                 input_batch: mb_data,
                 labels: mb_labels,
                 in_training: True,
-                learning_rate: 0.0004
+                learning_rate: 0.001
             }
 
             collectibles = [loss, accuracy, summaries, optimizer]
@@ -287,7 +287,7 @@ def run(iterations, minibatch_size):
                     input_batch: x_test,
                     labels: y_test,
                     in_training: False,
-                    learning_rate: 0.0004
+                    learning_rate: 0.001
                 }
                 test_acc, sum_acc = sess.run([accuracy, test_accuracy_summary], feed_dict=feed_dict)
                 train_writer.add_summary(sum_acc, i)
