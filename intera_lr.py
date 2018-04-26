@@ -284,8 +284,8 @@ def run(iterations, minibatch_size):
 
             if i % 1000 == 0:
                 print("lr change")
-                i, o, e = select.select( [sys.stdin], [], [], 3 )
-                if (i):
+                ii, oo, ee = select.select( [sys.stdin], [], [], 3 )
+                if (ii):
                   lr = float(sys.stdin.readline().strip())
             if i % 100 == 0:
                 feed_dict = {
